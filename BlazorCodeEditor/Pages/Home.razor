@@ -1,0 +1,45 @@
+﻿@using System.Runtime.InteropServices
+@using BlazorCodeEditor.Code
+@using BlazorMonaco
+@using BlazorCodeEditor.Console
+@using BlazorMonaco.Editor
+@page "/"
+
+<PageTitle>Editor</PageTitle>
+<nav class="navbar navbar-expand-lg bg-light">
+    <div class="container-fluid">
+        <span class="flex-grow-1"></span>
+        <form class="d-flex">
+            <button type="button" class="btn btn-success my-2 my-sm-0" @onclick="RunCodeAsync">Run Code</button>
+        </form>
+    </div>
+</nav>
+
+    <div style="height:60%" class="w-100 d-flex">
+        <StandaloneCodeEditor @ref="_editor" ConstructionOptions="GetOptions" />
+    </div>
+    
+    <div style="height: 40%" class="w-100 d-flex">
+        <ConsoleOutput />
+    </div>
+
+@code {
+    private StandaloneCodeEditor _editor = default!;
+
+    [Inject] protected ICodeExecutor CodeRunner { get; set; } = default!;
+    
+    private StandaloneEditorConstructionOptions _options = new()
+    {
+        Language = "csharp",
+        Value = "using System;\nConsole.WriteLine(\"Hello World!\");"
+    };
+
+    private StandaloneEditorConstructionOptions GetOptions(StandaloneCodeEditor editor) => _options;
+
+    protected async Task RunCodeAsync()
+    {
+        var text = await _editor.GetValue();
+        await CodeRunner.ExecuteAsync(text, CancellationToken.None);
+            
+    }
+}
