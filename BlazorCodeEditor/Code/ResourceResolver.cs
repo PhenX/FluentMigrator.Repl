@@ -20,8 +20,8 @@ public class ResourceResolver : IResourceResolver
     {
         var isDevelopment = _env.IsDevelopment();
         var baseAddress = isDevelopment
-            ? "https://localhost:7158" // Local development
-            : "https://blazor-code-editor.azurewebsites.net"; // Deployed environment
+            ? "https://localhost:7158" 
+            : "https://blazor-code-editor.azurewebsites.net";
 
         var httpClient = new HttpClient
         {
@@ -61,26 +61,16 @@ public class ResourceResolver : IResourceResolver
         // Combine all relevant resources into one dictionary for easy lookup
         var allResources = new Dictionary<string, string>();
 
-        AddResources(bootJson.Resources.Fingerprinting);
+        foreach (var resource in bootJson.Resources.Fingerprinting.Where(resource => !allResources.ContainsKey(resource.Value)))
+        {
+            allResources.Add(resource.Value, resource.Key);
+        }
 
         return allResources;
-
-        void AddResources(Dictionary<string, string> resources)
-        {
-            if (resources == null) return;
-            foreach (var resource in resources)
-            {
-                if (!allResources.ContainsKey(resource.Value))
-                {
-                    allResources.Add(resource.Value, resource.Key);
-                }
-            }
-        }
     }
 
     private string GetBaseUri()
     {
-        // Assume the base URI can be derived from the current environment or configuration.
         return _httpClient.BaseAddress.ToString().TrimEnd('/');
     }
 }
