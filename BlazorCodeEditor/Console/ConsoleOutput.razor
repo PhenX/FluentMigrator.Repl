@@ -23,11 +23,9 @@
 
     protected override void OnInitialized()
     {
-        // Subscribe to the service
         ConsoleOutputService.OnConsoleOutputReceived += HandleConsoleOutputReceived;
         ConsoleOutputService.OnConsoleCleared += HandleConsoleCleared;
 
-        // Initialize the service
         logs = ConsoleOutputService.Logs.ToList();
     }
 
@@ -42,18 +40,6 @@
         logs.Clear();
         StateHasChanged();
     }
-
-    /*
-    private MudBlazor.Color GetSeverityColor(ConsoleSeverity severity) =>
-        severity switch
-        {
-            ConsoleSeverity.Debug => MudBlazor.Color.Inherit,
-            ConsoleSeverity.Info => MudBlazor.Color.Info,
-            ConsoleSeverity.Warning => MudBlazor.Color.Warning,
-            ConsoleSeverity.Error => MudBlazor.Color.Error,
-            _ => MudBlazor.Color.Default
-        };
-        */
 
     private async Task ClearLogs()
     {

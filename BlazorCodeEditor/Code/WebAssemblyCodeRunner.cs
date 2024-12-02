@@ -25,20 +25,17 @@ public class WebAssemblyCodeRunner : ICodeExecutor
     {
         var stopwatch = Stopwatch.StartNew();
 
-        // Parse syntax tree
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
         _consoleOutputService.AddLog("Parsed syntax tree.", ConsoleSeverity.Debug);
 
-        // Create references
         var references = new List<MetadataReference>
         {
-            await GetMetadataReferenceAsync("assemblies/System.Private.CoreLib.dll"),
-            await GetConsoleMetadataReferenceAsync(),
-            await GetRuntimeMetadataReferenceAsync(),
-            await GetCollectionsMetadataReferenceAsync(),
+            await GetMetadataReferenceAsync("System.Private.CoreLib.wasm"),
+            await GetMetadataReferenceAsync("System.Runtime.wasm"),
+            await GetMetadataReferenceAsync("System.Console.wasm"),
+            await GetMetadataReferenceAsync("System.Collections.wasm"),
         };
 
-        // Compile code
         stopwatch.Restart();
         var compilation = CSharpCompilation.Create(
             "InMemoryAssembly",
@@ -53,7 +50,6 @@ public class WebAssemblyCodeRunner : ICodeExecutor
         );
         _consoleOutputService.AddLog($"Compilation completed in {stopwatch.ElapsedMilliseconds} ms.", ConsoleSeverity.Debug);
 
-        // Log diagnostics
         foreach (var diagnostic in compilation.GetDiagnostics())
         {
             var severity = diagnostic.Severity switch
@@ -65,7 +61,6 @@ public class WebAssemblyCodeRunner : ICodeExecutor
             _consoleOutputService.AddLog(diagnostic.GetMessage(), severity);
         }
 
-        // Emit assembly
         stopwatch.Restart();
         using var memoryStream = new MemoryStream();
         var emitResult = compilation.Emit(memoryStream);
@@ -87,12 +82,10 @@ public class WebAssemblyCodeRunner : ICodeExecutor
             return;
         }
 
-        // Load assembly
         memoryStream.Seek(0, SeekOrigin.Begin);
         var assembly = Assembly.Load(memoryStream.ToArray());
         _consoleOutputService.AddLog($"Assembly loaded: {assembly.FullName}", ConsoleSeverity.Debug);
 
-        // Find entry point
         var entryPoint = assembly.EntryPoint;
         if (entryPoint == null)
         {
@@ -100,7 +93,6 @@ public class WebAssemblyCodeRunner : ICodeExecutor
             return;
         }
 
-        // Invoke entry point
         try
         {
             stopwatch.Restart();
@@ -120,48 +112,17 @@ public class WebAssemblyCodeRunner : ICodeExecutor
             _consoleOutputService.AddLog(exceptionMessage, ConsoleSeverity.Error);
         }
     }
-
-    private async Task<PortableExecutableReference> GetMetadataReferenceAsync(string assemblyPath)
-    {
-        var httpClient = CreateHttpClient();
-        await using var stream = await httpClient.GetStreamAsync(await ResolveResourceStreamUri("System.Private.CoreLib.wasm")); //"fk089ohxy8.wasm");
-        var peBytes = WebcilConverterUtil.ConvertFromWebcil(stream);
-
-        using var peStream = new MemoryStream(peBytes);
-        return MetadataReference.CreateFromStream(peStream);
-    }
-
+    
     private async Task<string> ResolveResourceStreamUri(string resource)
     {
         var resolved = await _resourceResolver.ResolveResource(resource);
         return $"/_framework/{resolved}";
     }
 
-    private async Task<PortableExecutableReference> GetConsoleMetadataReferenceAsync()
+    private async Task<PortableExecutableReference> GetMetadataReferenceAsync(string wasmModule)
     {
         var httpClient = CreateHttpClient();
-        await using var stream =
-            await httpClient.GetStreamAsync(await ResolveResourceStreamUri("System.Console.wasm")); // "/_framework/System.Console.wasm"); //".8gya5re9cq.wasm");
-        var peBytes = WebcilConverterUtil.ConvertFromWebcil(stream);
-
-        using var peStream = new MemoryStream(peBytes);
-        return MetadataReference.CreateFromStream(peStream);
-    }
-
-    private async Task<PortableExecutableReference> GetRuntimeMetadataReferenceAsync()
-    {
-        var httpClient = CreateHttpClient();
-        await using var stream = await httpClient.GetStreamAsync(await ResolveResourceStreamUri("System.Runtime.wasm")); //47lunemxsj.wasm");
-        var peBytes = WebcilConverterUtil.ConvertFromWebcil(stream);
-
-        using var peStream = new MemoryStream(peBytes);
-        return MetadataReference.CreateFromStream(peStream);
-    }
-
-    private async Task<PortableExecutableReference> GetCollectionsMetadataReferenceAsync()
-    {
-        var httpClient = CreateHttpClient();
-        await using var stream = await httpClient.GetStreamAsync(await ResolveResourceStreamUri("System.Collections.wasm")); //".uiz1v0ys5y.wasm");
+        await using var stream = await httpClient.GetStreamAsync(await ResolveResourceStreamUri(wasmModule));
         var peBytes = WebcilConverterUtil.ConvertFromWebcil(stream);
 
         using var peStream = new MemoryStream(peBytes);
@@ -172,8 +133,8 @@ public class WebAssemblyCodeRunner : ICodeExecutor
     {
         var isDevelopment = _env.IsDevelopment();
         var baseAddress = isDevelopment
-            ? "https://localhost:7158" // Local development
-            : "https://blazor-code-editor.azurewebsites.net"; // Deployed environment
+            ? "https://localhost:7158" 
+            : "https://blazor-code-editor.azurewebsites.net"; 
 
         var httpClient = new HttpClient
         {
