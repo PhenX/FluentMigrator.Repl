@@ -1,0 +1,69 @@
+@inject ConsoleOutputService ConsoleOutputService
+@implements IDisposable
+<div class="d-flex p-1 mud-width-full mud-height-full flex-grow-1 overflow-y-hidden" style="flex-direction:column;">
+
+    <div class="flex-grow-1 w-100">
+        <div class="flex-grow-1"></div>
+        <button type="button" class="btn btn-outline-primary"  @onclick="ClearLogs">Clear</button>
+    </div>
+
+    <div class="h-100 overflow-y-auto">
+        <ul>
+        @foreach (var log in logs)
+        {
+            <li class="@(log.Severity is ConsoleSeverity.Debug ? "text-muted" : "")">
+                [@log.Timestamp.ToString("HH:mm:ss")] @log.Message
+            </li>
+        }
+        </ul>
+    </div>
+</div>
+@code {
+    private List<ConsoleOutputViewModel> logs = new();
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to the service
+        ConsoleOutputService.OnConsoleOutputReceived += HandleConsoleOutputReceived;
+        ConsoleOutputService.OnConsoleCleared += HandleConsoleCleared;
+
+        // Initialize the service
+        logs = ConsoleOutputService.Logs.ToList();
+    }
+
+    private void HandleConsoleOutputReceived(ConsoleOutputViewModel log)
+    {
+        logs.Add(log);
+        StateHasChanged();
+    }
+
+    private void HandleConsoleCleared()
+    {
+        logs.Clear();
+        StateHasChanged();
+    }
+
+    /*
+    private MudBlazor.Color GetSeverityColor(ConsoleSeverity severity) =>
+        severity switch
+        {
+            ConsoleSeverity.Debug => MudBlazor.Color.Inherit,
+            ConsoleSeverity.Info => MudBlazor.Color.Info,
+            ConsoleSeverity.Warning => MudBlazor.Color.Warning,
+            ConsoleSeverity.Error => MudBlazor.Color.Error,
+            _ => MudBlazor.Color.Default
+        };
+        */
+
+    private async Task ClearLogs()
+    {
+        ConsoleOutputService.ClearLogs();
+    }
+
+    public void Dispose()
+    {
+        ConsoleOutputService.OnConsoleOutputReceived -= HandleConsoleOutputReceived;
+        ConsoleOutputService.OnConsoleCleared -= HandleConsoleCleared;
+    }
+    
+}
