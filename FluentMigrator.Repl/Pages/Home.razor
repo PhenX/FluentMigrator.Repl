@@ -1,0 +1,129 @@
+﻿@using System.Threading
+@using FluentMigrator.Repl.Code
+@using FluentMigrator.Repl.Console
+@using BlazorMonaco.Editor
+@page "/"
+
+<PageTitle>FluentMigrator REPL</PageTitle>
+
+<div class="row">
+    <div class="col-7">
+        <StandaloneCodeEditor @ref="_editor" ConstructionOptions="GetOptions" />
+    </div>
+    
+    <div class="col-5">
+        <div class="flex-grow-1 w-100">
+            <button type="button" class="btn btn-sm btn-success" @onclick="RunCodeAsync">Run Code</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => _consoleOutput.ClearLogs()">Clear</button>
+        </div>
+        
+        <ConsoleOutput @ref="_consoleOutput"/>
+    </div>
+</div>
+
+@code {
+    private StandaloneCodeEditor _editor = default!;
+    private ConsoleOutput _consoleOutput = default!;
+
+    [Inject] protected ICodeExecutor CodeRunner { get; set; } = default!;
+    
+    //language=csharp
+    private const string InitialCode = @"using System;
+using System.Data;
+using FluentMigrator;
+
+using FluentMigrator.Runner;
+using FluentMigrator.Runner.Conventions;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FluentMigratorSamples.Migrations;
+
+// Sample Migration - Creates a Users table
+[Migration(202509061441)]
+public class CreateUsersTable : Migration
+{
+    public override void Up()
+    {
+        Create.Table(""Users"")
+            .WithColumn(""Id"").AsInt32().PrimaryKey().Identity()
+            .WithColumn(""FirstName"").AsString(50).NotNullable()
+            .WithColumn(""LastName"").AsString(50).NotNullable()
+            .WithColumn(""Email"").AsString(255).NotNullable().Unique()
+            .WithColumn(""DateCreated"").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentDateTime)
+            .WithColumn(""IsActive"").AsBoolean().NotNullable().WithDefaultValue(true);
+    }
+
+    public override void Down()
+    {
+        Delete.Table(""Users"");
+    }
+}
+    
+// Main program to execute migrations
+public static class Program
+{
+    public static void Main(string[] args)
+    {
+        var connectionString = ""Data Source=sample.db;"";
+
+        Console.WriteLine(""Starting FluentMigrator SQLite Example..."");
+
+        // Configure services
+        var serviceProvider = new ServiceCollection()
+            .AddFluentMigratorCore()
+            .ConfigureRunner(rb => rb
+                .AddSQLite()
+                .WithGlobalConnectionString(connectionString)
+                .ScanIn(typeof(Program).Assembly).For.Migrations())
+            .AddSingleton<IConventionSet>(new DefaultConventionSet("""", """"))
+            .BuildServiceProvider(false);
+
+        // Execute migrations
+        var runner = serviceProvider.GetRequiredService<IMigrationRunner>();
+
+        Console.WriteLine(""Executing migrations..."");
+        runner.MigrateUp();
+
+        Console.WriteLine(""Migrations completed successfully!"");
+
+        // Optional: List applied migrations
+        Console.WriteLine(""\nApplied migrations:"");
+        var versionLoader = serviceProvider.GetRequiredService<IVersionLoader>();
+        var appliedVersions = versionLoader.VersionInfo.AppliedMigrations();
+
+        foreach (var version in appliedVersions)
+        {
+            Console.WriteLine($""- Migration {version}"");
+        }
+        
+        var p = serviceProvider.GetRequiredService<IMigrationProcessor>();
+        var dataSet = p.ReadTableData(null, ""sqlite_master"");
+
+        var table = dataSet.Tables[0];
+        for (var i = 0; i < table.Rows.Count; i++)
+        {
+            Console.WriteLine($""\nTable: {table.TableName}"");
+            
+            var row = table.Rows[i];
+            foreach (DataColumn column in table.Columns)
+            {
+                Console.WriteLine($""{column.ColumnName}: {row[column]}"");
+            }
+        }
+    }
+}";
+    
+    private StandaloneEditorConstructionOptions _options = new()
+    {
+        Language = "csharp",
+        Value = InitialCode
+    };
+
+    private StandaloneEditorConstructionOptions GetOptions(StandaloneCodeEditor editor) => _options;
+
+    protected async Task RunCodeAsync()
+    {
+        var text = await _editor.GetValue();
+        await CodeRunner.ExecuteAsync(text, CancellationToken.None);
+    }
+}

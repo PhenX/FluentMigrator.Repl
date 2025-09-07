@@ -1,5 +1,8 @@
-# BlazorCodeEditor
-A fully client side c# code editor with blazor and roslyn
+# FluentMigrator REPL
+
+This tool is based on the code from https://github.com/thatplatypus/BlazorCodeEditor
+
+It is a fully client-side web application built with Blazor WebAssembly that demonstrates a novel approach to dynamically compiling and executing FluentMigrator entirely in the browser.
 
 ## Overview
 Blazor Code Editor is a minimal, client-side web application built with Blazor WebAssembly. It demonstrates a novel approach to dynamically compiling and executing C# code entirely in the browser. This project is a lightweight public version of Apollo, showcasing its core capabilities in a simplified form.

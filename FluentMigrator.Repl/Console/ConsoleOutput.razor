@@ -1,0 +1,49 @@
+@inject ConsoleOutputService ConsoleOutputService
+@implements IDisposable
+<div class="d-flex p-1 mud-width-full mud-height-full flex-grow-1 overflow-y-hidden console" style="flex-direction:column;">
+    <div class="h-100 overflow-y-auto">
+        <ul>
+        @foreach (var log in _logs)
+        {
+            <li class="@(log.Severity is ConsoleSeverity.Debug ? "text-muted" : "")">
+                [@log.Timestamp.ToString("HH:mm:ss")] @log.Message
+            </li>
+        }
+        </ul>
+    </div>
+</div>
+@code {
+    private List<ConsoleOutputViewModel> _logs = new();
+
+    protected override void OnInitialized()
+    {
+        ConsoleOutputService.OnConsoleOutputReceived += HandleConsoleOutputReceived;
+        ConsoleOutputService.OnConsoleCleared += HandleConsoleCleared;
+
+        _logs = ConsoleOutputService.Logs.ToList();
+    }
+
+    private void HandleConsoleOutputReceived(ConsoleOutputViewModel log)
+    {
+        _logs.Add(log);
+        StateHasChanged();
+    }
+
+    private void HandleConsoleCleared()
+    {
+        _logs.Clear();
+        StateHasChanged();
+    }
+
+    public void ClearLogs()
+    {
+        ConsoleOutputService.ClearLogs();
+    }
+
+    public void Dispose()
+    {
+        ConsoleOutputService.OnConsoleOutputReceived -= HandleConsoleOutputReceived;
+        ConsoleOutputService.OnConsoleCleared -= HandleConsoleCleared;
+    }
+    
+}
